@@ -11,7 +11,14 @@ import (
 	"encoding/gob"
 )
 
+func Banner(){
+	// A banner for fun
+	fmt.Println("# #     #   # ######### ##########   ######     ######              #            ######   #   #   ######   \n #   #  #   #         #          #                #                 #   ###        #      #   #            \n# # #   #   #         #         #  ########## ##########   ##       ####       ########## #   # ########## \n   #    #   # ########  ########   #        #     #       #  ##     #              #      #   # #        # \n  # #      #         #      ##            ##      #      #     ##   #              #         #         ##  \n #   #    #          #    ##            ##        #              ## #              #        #        ##    \n      # ##    ########  ##            ##           ####              #######        ####  ##       ##")
+	fmt.Println("Gomunicazion permitts you to comunicate privately through TCP with people on the same server as you, enjoy !")
+}
+
 func KeyGen() (rsa.PublicKey, rsa.PrivateKey){
+	// key generation
 	priv_key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		fmt.Println("Could not generate Keys")
@@ -22,26 +29,26 @@ func KeyGen() (rsa.PublicKey, rsa.PrivateKey){
 }
 
 func SetUsername() string{
+	//setting up username
 	var username string
-	fmt.Printf("Quel nom d'utilisateur : ")
+	fmt.Printf("Please set your username : ")
 	fmt.Scan(&username)
 	return username
 }
 
 func Connect(server string) net.Conn{
+	//Connection to server
 	connection, err := net.Dial("tcp", server)
 	if err != nil {
-		fmt.Println("Could not connect")
+		fmt.Printf("Could not connect: %s\n", err)
 		os.Exit(1)
 	}
 	return connection
 }
 
 func Encryption(message string, server_pub_key rsa.PublicKey) string {
+	//Encrypt outgoing data
 	data := []byte(message)
-
-	// crypto/rand.Reader is a good source of entropy for randomizing the
-	// encryption function.
 	rng := rand.Reader
 
 	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &server_pub_key, data, nil)
@@ -53,6 +60,7 @@ func Encryption(message string, server_pub_key rsa.PublicKey) string {
 }
 
 func Decryption(message string, user_priv_key rsa.PrivateKey) string {
+	//Decrypt incoming data
 	data := []byte(message)
 	rng := rand.Reader
 
@@ -65,7 +73,18 @@ func Decryption(message string, user_priv_key rsa.PrivateKey) string {
 
 }
 
+func Receiver(connection net.Conn, user_priv_key rsa.PrivateKey, username string) {
+	//Goroutine in order to catch incomming messages
+	dec := gob.NewDecoder(connection)
+	for {
+		var message string
+		dec.Decode(&message)
+		fmt.Printf("\n======New Message======\n%s\n======New Message======\n%s >> ",Decryption(message, user_priv_key), username)
+	}
+}
+
 func main(){
+	Banner()
 	arguments := os.Args
 	if len(arguments) == 1 {
 			fmt.Println("Please provide host:port.")
@@ -73,17 +92,24 @@ func main(){
 	}
 	server := arguments[1]
 	username := SetUsername()
-	user_pub_key, _ := KeyGen()
+	user_pub_key, user_priv_key := KeyGen()
 	var server_pub_key = rsa.PublicKey{}
 
 	connection := Connect(server)
+	//We use gob encoding in order to transmit and receive data safely
 	enc := gob.NewEncoder(connection)
     dec := gob.NewDecoder(connection)
+
+	//Big dumb key exchange and sending usename
 	enc.Encode(&user_pub_key)
 	dec.Decode(&server_pub_key)
 	enc.Encode(Encryption(username, server_pub_key))
-	
+
+	//Launching Message handling Gorouting
+	go Receiver(connection, user_priv_key, username)
+
 	for {
+		//Loop for writing to the server
 		scanner := bufio.NewScanner(os.Stdin)
 		fmt.Printf("%s >> ", username)
 		scanner.Scan()

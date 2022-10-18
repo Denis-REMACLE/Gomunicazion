@@ -1,3 +1,3 @@
-module pkg/chat_client
+module chat_client
 
 go 1.18

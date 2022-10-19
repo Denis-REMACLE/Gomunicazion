@@ -1,23 +1,23 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"net"
 	"bufio"
-	"crypto/rsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/gob"
+	"fmt"
+	"net"
+	"os"
 )
 
-func Banner(){
+func Banner() {
 	// A banner for fun
 	fmt.Println("# #     #   # ######### ##########   ######     ######              #            ######   #   #   ######   \n #   #  #   #         #          #                #                 #   ###        #      #   #            \n# # #   #   #         #         #  ########## ##########   ##       ####       ########## #   # ########## \n   #    #   # ########  ########   #        #     #       #  ##     #              #      #   # #        # \n  # #      #         #      ##            ##      #      #     ##   #              #         #         ##  \n #   #    #          #    ##            ##        #              ## #              #        #        ##    \n      # ##    ########  ##            ##           ####              #######        ####  ##       ##")
 	fmt.Println("Gomunicazion permitts you to comunicate privately through TCP with people on the same server as you, enjoy !")
 }
 
-func KeyGen() (rsa.PublicKey, rsa.PrivateKey){
+func KeyGen() (rsa.PublicKey, rsa.PrivateKey) {
 	// key generation
 	priv_key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -28,7 +28,7 @@ func KeyGen() (rsa.PublicKey, rsa.PrivateKey){
 	return pub_key, *priv_key
 }
 
-func SetUsername() string{
+func SetUsername() string {
 	//setting up username
 	var username string
 	fmt.Printf("Please set your username : ")
@@ -36,7 +36,7 @@ func SetUsername() string{
 	return username
 }
 
-func Connect(server string) net.Conn{
+func Connect(server string) net.Conn {
 	//Connection to server
 	connection, err := net.Dial("tcp", server)
 	if err != nil {
@@ -79,16 +79,16 @@ func Receiver(connection net.Conn, user_priv_key rsa.PrivateKey, username string
 	for {
 		var message string
 		dec.Decode(&message)
-		fmt.Printf("\n======New Message======\n%s\n======New Message======\n%s >> ",Decryption(message, user_priv_key), username)
+		fmt.Printf("\n======New Message======\n%s\n======New Message======\n%s >> ", Decryption(message, user_priv_key), username)
 	}
 }
 
-func main(){
+func main() {
 	Banner()
 	arguments := os.Args
 	if len(arguments) == 1 {
-			fmt.Println("Please provide host:port.")
-			os.Exit(1)
+		fmt.Println("Please provide host:port.")
+		os.Exit(1)
 	}
 	server := arguments[1]
 	username := SetUsername()
@@ -98,7 +98,7 @@ func main(){
 	connection := Connect(server)
 	//We use gob encoding in order to transmit and receive data safely
 	enc := gob.NewEncoder(connection)
-    dec := gob.NewDecoder(connection)
+	dec := gob.NewDecoder(connection)
 
 	//Big dumb key exchange and sending usename
 	enc.Encode(&user_pub_key)

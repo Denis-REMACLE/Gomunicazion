@@ -18,6 +18,65 @@ func Banner() {
 	fmt.Println("Made By Denis <cr1ng3> REMACLE\n")
 }
 
+func CheckIP(host string) bool {
+	if len(split(host, ':')) != 2 {
+		return false
+	}
+
+	host_split := split(host, ':')
+	count := 0
+	ip := split(string(host_split[0]), '.')
+	port := string(host_split[1])
+
+	for x := 0; x < len(ip); x++ {
+
+        	if len(ip) != 4 {
+        		count++
+        		break
+            	}
+
+        	tmp := 0
+        	tmp, err := strconv.Atoi(ip[x])
+        	if err != nil {
+        		panic(err)
+        		fmt.Println("la valeur entrée n'est pas la bonne")
+        		break
+        	}
+        	if (x == 0 && tmp <= 0 || tmp > 256) || (tmp < 0 || tmp > 256) {
+        		count++
+        	}
+        }
+	port_value, _ := strconv.Atoi(port)
+	if port_value <= 0 || port_value > 65536 {
+		count++
+	}
+        if count == 0 {
+        	return true
+        } else {
+		return false
+	}
+}
+
+func split(tosplit string, sep rune) []string {
+	//string splitting function
+
+	var fields []string
+	last := 0
+	
+	for i,c := range tosplit {
+        	if c == sep {
+        	// Found the separator, append a slice
+        	fields = append(fields, string(tosplit[last:i]))
+        	last = i + 1
+		}
+	}
+
+	// Don't forget the last field
+	fields = append(fields, string(tosplit[last:]))
+
+	return fields
+}
+
 func KeyGen() (rsa.PublicKey, rsa.PrivateKey) {
 	// key generation
 	priv_key, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -54,8 +113,7 @@ func Encryption(message string, server_pub_key rsa.PublicKey) string {
 
 	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &server_pub_key, data, nil)
 	if err != nil {
-		fmt.Printf("Error from encryption: %s\n", err)
-		return "fuck"
+		return "Encryption error"
 	}
 	return string(ciphertext)
 }
@@ -66,9 +124,9 @@ func Decryption(message string, user_priv_key rsa.PrivateKey) string {
 	rng := rand.Reader
 
 	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &user_priv_key, data, nil)
-	if err != nil {
+	if err != nil {	
 		fmt.Printf("Error from decryption: %s\n", err)
-		return "fuck"
+		return "Decryption error"
 	}
 	return string(plaintext)
 
@@ -80,7 +138,13 @@ func Receiver(connection net.Conn, user_priv_key rsa.PrivateKey, username string
 	for {
 		var message string
 		dec.Decode(&message)
-		fmt.Printf("\n======New Message======\n%s\n======New Message======\n%s >> ", Decryption(message, user_priv_key), username)
+		message = Decryption(message, user_priv_key)
+		if message == "Decryption error" {
+			fmt.Println("\n======= Error ========\nServer has disconnected : quitting !\n======= Error =======")
+			os.Exit(0)
+		} else {
+			fmt.Printf("\n======New Message======\n%s\n======New Message======\n%s >> ", message, username)
+		}
 	}
 }
 
@@ -92,6 +156,10 @@ func main() {
 		os.Exit(1)
 	}
 	server := arguments[1]
+	if CheckIP(server) == false {
+		fmt.Println("Given IP is bad")
+		os.Exit(0)
+	}
 	username := SetUsername()
 	user_pub_key, user_priv_key := KeyGen()
 	var server_pub_key = rsa.PublicKey{}

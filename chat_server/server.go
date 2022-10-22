@@ -21,6 +21,45 @@ func Banner() {
 	fmt.Println("Made By Denis <cr1ng3> REMACLE\n")
 }
 
+func CheckIP(host string) bool {
+	if len(split(host, ':')) != 2 {
+		return false
+	}
+
+	host_split := split(host, ':')
+	count := 0
+	ip := split(string(host_split[0]), '.')
+	port := string(host_split[1])
+
+	for x := 0; x < len(ip); x++ {
+
+        	if len(ip) != 4 {
+        		count++
+        		break
+            	}
+
+        	tmp := 0
+        	tmp, err := strconv.Atoi(ip[x])
+        	if err != nil {
+        		panic(err)
+        		fmt.Println("la valeur entrée n'est pas la bonne")
+        		break
+        	}
+        	if (x == 0 && tmp <= 0 || tmp > 256) || (tmp < 0 || tmp > 256) {
+        		count++
+        	}
+        }
+	port_value, _ := strconv.Atoi(port)
+	if port_value <= 0 || port_value > 65536 {
+		count++
+	}
+        if count == 0 {
+        	return true
+        } else {
+		return false
+	}
+}
+
 func KeyGen() (rsa.PublicKey, rsa.PrivateKey) {
 	// key generation
 	priv_key, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -52,7 +91,7 @@ func Decryption(message string, server_priv_key rsa.PrivateKey) string {
 
 	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &server_priv_key, data, nil)
 	if err != nil {
-		fmt.Printf("Error from decryption: %s\n", err)
+		fmt.Println("Decryption error : a user must've disconnected himself")
 		return "Decryption error"
 	}
 	return string(plaintext)
@@ -84,8 +123,12 @@ func MessageHandler(connection net.Conn, user_pub_key rsa.PublicKey) {
 	enc := gob.NewEncoder(connection)
 	for {
 		new_message := <-message
+		
 		if split(new_message, ' ')[0] == "Decryption" && split(new_message, ' ')[2] == connection.RemoteAddr().String(){
 			break
+		} else if split(new_message, ' ')[0] == "Decryption" && split(new_message, ' ')[2] != connection.RemoteAddr().String(){
+			data := Encryption(split(new_message, ' ')[3]+" has left the chat", user_pub_key)
+			enc.Encode(&data)
 		} else {
 			data := Encryption(new_message, user_pub_key)
 			enc.Encode(&data)
@@ -114,12 +157,18 @@ func ConnectionHandler(connection net.Conn, server_pub_key rsa.PublicKey, server
 			//If username is not set the the data is the username
 			username = Decryption(recieved_data, server_priv_key)
 			fmt.Printf("User %s connected on %s\n", username, connection.RemoteAddr().String())
+			data_to_send := username+" has entered the chat"
+			for i := 0; i < runtime.NumGoroutine()/2; i++ {
+				//Adding the data for all MessageHandler goroutines running
+				message <- data_to_send
+			}
+
 		} else {
 			//Else data must be sent to users
 			recieved_data = Decryption(recieved_data, server_priv_key)
 			if recieved_data == "Decryption error" {
 				for i := 0; i < runtime.NumGoroutine()/2; i++ {
-					message  <- recieved_data+" "+connection.RemoteAddr().String()
+					message  <- recieved_data+" "+connection.RemoteAddr().String()+" "+username
 				}
 				break
 			}
@@ -132,12 +181,21 @@ func ConnectionHandler(connection net.Conn, server_pub_key rsa.PublicKey, server
 		}
 	}
 	connection.Close()
+
+	if runtime.NumGoroutine() == 2 {	
+		os.Exit(0)
+	}
 }
 
 func main() {
 	Banner()
 	arguments := os.Args
 	port := arguments[1]
+	if CheckIP(port) == false {
+		fmt.Println("Given IP is bad")
+		os.Exit(0)
+	}
+
 	max_clients, _ := strconv.Atoi(arguments[2])
 	server_pub_key, server_priv_key := KeyGen()
 	listener, err := net.Listen("tcp", port)

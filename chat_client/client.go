@@ -13,8 +13,9 @@ import (
 
 func Banner() {
 	// A banner for fun
-	fmt.Println("# #     #   # ######### ##########   ######     ######              #            ######   #   #   ######   \n #   #  #   #         #          #                #                 #   ###        #      #   #            \n# # #   #   #         #         #  ########## ##########   ##       ####       ########## #   # ########## \n   #    #   # ########  ########   #        #     #       #  ##     #              #      #   # #        # \n  # #      #         #      ##            ##      #      #     ##   #              #         #         ##  \n #   #    #          #    ##            ##        #              ## #              #        #        ##    \n      # ##    ########  ##            ##           ####              #######        ####  ##       ##")
-	fmt.Println("Gomunicazion permitts you to comunicate privately through TCP with people on the same server as you, enjoy !")
+	fmt.Println("  ___                               _                    _              \n / __|  ___   _ __    _  _   _ _   (_)  __   __ _   ___ (_)  ___   _ _  \n| (_ | / _ \\ | '  \\  | || | | ' \\  | | / _| / _` | |_ / | | / _ \\ | ' \\ \n \\___| \\___/ |_|_|_|  \\_,_| |_||_| |_| \\__| \\__,_| /__| |_| \\___/ |_||_|")
+	fmt.Println("\nGomunicazion permitts you to comunicate privately, enjoy !")
+	fmt.Println("Made By Denis <cr1ng3> REMACLE\n")
 }
 
 func KeyGen() (rsa.PublicKey, rsa.PrivateKey) {
